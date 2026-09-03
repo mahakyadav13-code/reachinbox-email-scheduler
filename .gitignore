@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Testing / coverage
+coverage/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Environment - secrets never get committed.
+# .env.example files ARE tracked; they document the required variables.
+.env
+.env.local
+.env.*.local
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Vite cache
+.vite/
+**/node_modules/.vite/
+
+# NOTE: prisma/migrations/ is intentionally NOT ignored.
+# Migrations are part of the source of truth - without them `prisma migrate
+# deploy` has nothing to apply and a fresh clone cannot build its schema.

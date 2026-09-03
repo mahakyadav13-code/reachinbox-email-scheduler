@@ -1,0 +1,32 @@
+{
+  "name": "reachinbox-email-scheduler",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,worker,web \"npm run dev -w apps/backend\" \"npm run worker -w apps/backend\" \"npm run dev -w apps/frontend\"",
+    "dev:wsl": "concurrently -n infra,api,worker,web \"npm run infra:keepalive\" \"npm run dev -w apps/backend\" \"npm run worker -w apps/backend\" \"npm run dev -w apps/frontend\"",
+    "dev:backend": "npm run dev -w apps/backend",
+    "dev:frontend": "npm run dev -w apps/frontend",
+    "dev:worker": "npm run worker -w apps/backend",
+    "build": "npm run build -w apps/backend && npm run build -w apps/frontend",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "infra:up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/wsl-infra.ps1",
+    "infra:keepalive": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/wsl-infra.ps1 -KeepAlive",
+    "prisma:generate": "npm run prisma:generate -w apps/backend",
+    "prisma:migrate": "npm run prisma:migrate -w apps/backend",
+    "prisma:studio": "npm run prisma:studio -w apps/backend",
+    "demo:seed": "npm run seed -w apps/backend",
+    "verify:api": "npm run verify:api -w apps/backend",
+    "verify:persistence": "npm run verify:persistence -w apps/backend",
+    "smoke:e2e": "npm run smoke:e2e -w apps/backend",
+    "test": "npm run test -w apps/backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

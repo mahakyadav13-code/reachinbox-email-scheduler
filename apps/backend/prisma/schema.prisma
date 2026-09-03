@@ -1,0 +1,147 @@
+// Prisma Schema for ReachInbox Email Scheduler
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - stores authenticated users via Google OAuth
+model User {
+  id        String   @id @default(cuid())
+  googleId  String   @unique
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  campaigns       EmailCampaign[]
+  senders         Sender[]
+  slackConnection SlackConnection?
+  
+  @@index([email])
+  @@index([googleId])
+  @@map("users")
+}
+
+// Sender model - email addresses that can send campaigns
+model Sender {
+  id       String  @id @default(cuid())
+  userId   String
+  name     String
+  email    String
+  provider String  @default("ethereal") // ethereal, smtp, etc.
+  isActive Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailJobs     EmailJob[]
+  campaigns     EmailCampaign[]
+  rateLimitLogs RateLimitLog[]
+  
+  @@unique([userId, email])
+  @@index([userId])
+  @@index([email])
+  @@map("senders")
+}
+
+// EmailCampaign model - represents a batch email campaign
+model EmailCampaign {
+  id                   String   @id @default(cuid())
+  userId               String
+  senderId             String
+  subject              String
+  body                 String   @db.Text
+  startTime            DateTime
+  delayBetweenEmails   Int // seconds
+  hourlyLimit          Int
+  totalEmails          Int      @default(0)
+  status               String   @default("scheduled") // scheduled, processing, completed, failed, paused
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender    Sender     @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  emailJobs EmailJob[]
+  
+  @@index([userId])
+  @@index([senderId])
+  @@index([status])
+  @@index([startTime])
+  @@map("email_campaigns")
+}
+
+// EmailJob model - individual email to be sent
+model EmailJob {
+  id             String    @id @default(cuid())
+  campaignId     String
+  senderId       String
+  recipientEmail String
+  subject        String
+  body           String    @db.Text
+  scheduledAt    DateTime
+  sentAt         DateTime?
+  status         String    @default("pending") // pending, processing, sent, failed, delayed
+  failureReason  String?   @db.Text
+  bullJobId      String?   @unique
+  idempotencyKey String    @unique
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sender   Sender        @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  
+  @@index([campaignId])
+  @@index([senderId])
+  @@index([recipientEmail])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([sentAt])
+  @@index([idempotencyKey])
+  @@index([bullJobId])
+  @@map("email_jobs")
+}
+
+// SlackConnection model - stores Slack OAuth connection
+model SlackConnection {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  workspaceId String
+  accessToken String   @db.Text
+  webhookUrl  String?  @db.Text
+  teamName    String?
+  
+  connectedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@map("slack_connections")
+}
+
+// RateLimitLog model - tracks hourly send counts per sender
+model RateLimitLog {
+  id         String   @id @default(cuid())
+  senderId   String
+  hourWindow DateTime // start of the hour window (e.g., 2026-09-03 10:00:00)
+  sentCount  Int      @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  sender Sender @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  @@unique([senderId, hourWindow])
+  @@index([senderId, hourWindow])
+  @@map("rate_limit_logs")
+}
