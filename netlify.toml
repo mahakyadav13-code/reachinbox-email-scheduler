@@ -1,0 +1,21 @@
+# Netlify build config for the React frontend.
+#
+# The repo is an npm workspace monorepo, so `base` points Netlify at the
+# frontend package and `publish` is resolved relative to it. Installing with
+# --no-package-lock keeps npm from hoisting the build tools up to the workspace
+# root, which is what makes `vite` resolvable from this directory.
+[build]
+  base = "apps/frontend"
+  command = "npm install --legacy-peer-deps --no-package-lock && npx vite build"
+  publish = "dist"
+
+[build.environment]
+  # Vite 5 / Rollup ship native binaries that fail to resolve on Node 24.
+  NODE_VERSION = "20"
+
+# React Router owns every path below /. Serve index.html for any request that
+# isn't a real file, with a 200 so the URL in the address bar is preserved.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
