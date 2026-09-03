@@ -1,5 +1,7 @@
 # ReachInbox Email Scheduler
 
+Project Live Link= https://outbox-assignment-submission-project-112.onrender.com
+
 A full-stack email scheduling service: an Express + TypeScript API, a BullMQ worker backed by Redis, PostgreSQL for state, and a React dashboard. Emails are scheduled as BullMQ **delayed jobs** — there is no cron anywhere in the system.
 
 Built as the ReachInbox / Outbox Labs Software Development Intern assignment.
