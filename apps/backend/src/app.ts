@@ -10,6 +10,16 @@ import { redis } from './config/redis';
 
 const app = express();
 
+const isProduction = config.nodeEnv === 'production';
+
+// Railway (and any managed host) terminates TLS at a proxy and forwards plain
+// HTTP internally. Without this, Express sees an insecure connection and
+// express-session silently refuses to set a `Secure` cookie, so login never
+// sticks in production.
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
 // Middleware
 app.use(cors({
   origin: config.urls.frontend,
@@ -26,9 +36,18 @@ app.use(
     secret: config.auth.sessionSecret,
     resave: false,
     saveUninitialized: false,
+    // Trust the proxy's X-Forwarded-Proto when deciding whether the connection
+    // counts as secure, so the `Secure` cookie below is actually issued.
+    proxy: isProduction,
     cookie: {
-      secure: config.nodeEnv === 'production',
+      secure: isProduction,
       httpOnly: true,
+      // In production the SPA and the API are on different sites (onrender.com
+      // vs railway.app), so the session cookie has to be SameSite=None or the
+      // browser withholds it on cross-site XHR and every request looks logged
+      // out. SameSite=None is only honoured alongside Secure. Locally both apps
+      // are on localhost, where Lax works and Secure would break plain HTTP.
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     },
   })
