@@ -2,9 +2,13 @@ import Redis from 'ioredis';
 import { config } from './index';
 import { logger } from './logger';
 
+const tlsOptions = config.redis.tls ? { tls: {} } : {};
+
 export const redis = new Redis({
   host: config.redis.host,
   port: config.redis.port,
+  password: config.redis.password,
+  ...tlsOptions,
   maxRetriesPerRequest: null, // Required for BullMQ
   retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
@@ -25,6 +29,8 @@ export const createRedisConnection = () => {
   return new Redis({
     host: config.redis.host,
     port: config.redis.port,
+    password: config.redis.password,
+    ...tlsOptions,
     maxRetriesPerRequest: null,
   });
 };
