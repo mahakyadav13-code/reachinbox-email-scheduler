@@ -1,3 +1,10 @@
+/**
+ * Email sending service.
+ *
+ * In production (RESEND_API_KEY set) uses Resend's HTTP API over port 443,
+ * which is never blocked by cloud hosts. Locally falls back to Ethereal SMTP
+ * so the local dev flow is unchanged.
+ */
 import nodemailer, { Transporter } from 'nodemailer';
 import { config } from '../../config';
 import { logger } from '../../config/logger';
@@ -17,17 +24,35 @@ export interface SendEmailResult {
   rejected: string[];
 }
 
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const FROM_OVERRIDE = process.env.SMTP_FROM_OVERRIDE;
+
 class SMTPService {
   private transporter: Transporter | null = null;
 
   async initialize() {
     if (this.transporter) return;
 
+    if (RESEND_API_KEY) {
+      // Resend nodemailer transport — uses HTTPS under the hood, not SMTP.
+      this.transporter = nodemailer.createTransport({
+        host: 'smtp.resend.com',
+        port: 465,
+        secure: true,
+        auth: {
+          user: 'resend',
+          pass: RESEND_API_KEY,
+        },
+      });
+      logger.info('Email transport: Resend (HTTP API)');
+      return;
+    }
+
+    // Local fallback: Ethereal fake SMTP.
     try {
       this.transporter = nodemailer.createTransport({
         host: config.ethereal.host,
         port: config.ethereal.port,
-        // port 465 uses implicit TLS; anything else uses STARTTLS
         secure: config.ethereal.port === 465,
         auth: {
           user: config.ethereal.user,
@@ -38,9 +63,8 @@ class SMTPService {
         socketTimeout: 15000,
       });
 
-      // Verify connection
       await this.transporter.verify();
-      logger.info('SMTP connection verified');
+      logger.info('Email transport: Ethereal SMTP verified');
     } catch (error) {
       logger.error('SMTP initialization failed:', error);
       throw error;
@@ -53,7 +77,7 @@ class SMTPService {
     }
 
     try {
-      const from = process.env.SMTP_FROM_OVERRIDE || params.from;
+      const from = FROM_OVERRIDE || params.from;
 
       const info = await this.transporter!.sendMail({
         from,
@@ -65,7 +89,6 @@ class SMTPService {
 
       logger.info(`Email sent: ${info.messageId} to ${params.to}`);
 
-      // Get preview URL for Ethereal
       const previewUrl = nodemailer.getTestMessageUrl(info);
 
       return {
