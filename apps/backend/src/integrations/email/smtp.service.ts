@@ -27,11 +27,15 @@ class SMTPService {
       this.transporter = nodemailer.createTransport({
         host: config.ethereal.host,
         port: config.ethereal.port,
-        secure: false,
+        // port 465 uses implicit TLS; anything else uses STARTTLS
+        secure: config.ethereal.port === 465,
         auth: {
           user: config.ethereal.user,
           pass: config.ethereal.pass,
         },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
       });
 
       // Verify connection
