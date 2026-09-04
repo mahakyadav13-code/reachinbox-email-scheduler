@@ -53,8 +53,10 @@ class SMTPService {
     }
 
     try {
+      const from = process.env.SMTP_FROM_OVERRIDE || params.from;
+
       const info = await this.transporter!.sendMail({
-        from: params.from,
+        from,
         to: params.to,
         subject: params.subject,
         text: params.text,
